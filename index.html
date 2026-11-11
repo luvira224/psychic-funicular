@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Color Iterations</title>
+<style>
+:root{--bg:#f5f6f8;--panel:#fff;--ink:#20232a;--muted:#7b8190;--line:#e8eaf0;--accent:#252a34;--soft:#f0f2f5;--good:#247a56;--warn:#a56a16;--bad:#b84c4c;--radius:18px}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+button,input,textarea,select{font:inherit}button{cursor:pointer;border:0;border-radius:11px;padding:10px 14px;background:var(--accent);color:#fff;font-weight:600}button.secondary{background:#fff;color:var(--ink);border:1px solid var(--line)}button.ghost{background:transparent;color:var(--muted);padding:7px 9px}button.danger{color:var(--bad);background:#fff1f1;border:1px solid #f4dddd}
+header{max-width:1180px;margin:auto;padding:30px 24px 18px;display:flex;align-items:center;justify-content:space-between;gap:16px}h1{font-size:25px;letter-spacing:-.7px;margin:0}header p{margin:5px 0 0;color:var(--muted)}.wrap{max-width:1180px;margin:auto;padding:0 24px 44px}.toolbar{display:flex;gap:9px;flex-wrap:wrap}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:12px 0 20px}.stat,.panel,.iteration{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius)}.stat{padding:16px 18px}.stat small{color:var(--muted);display:block;margin-bottom:7px}.stat strong{font-size:23px;letter-spacing:-.5px}
+.layout{display:grid;grid-template-columns:300px minmax(0,1fr);gap:16px;align-items:start}.panel{padding:18px}.panel h2{font-size:15px;margin:0 0 14px}.side-head{display:flex;justify-content:space-between;align-items:center}.iteration-list{display:grid;gap:8px}.iter-link{width:100%;text-align:left;background:#fff;color:var(--ink);border:1px solid var(--line);padding:12px;border-radius:13px}.iter-link.active{border-color:#858c99;background:#f8f9fb}.iter-link strong{display:block}.iter-link span{font-size:12px;color:var(--muted)}.empty{color:var(--muted);text-align:center;padding:28px 10px}
+.main-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px}.main-head h2{font-size:19px;margin:0 0 4px}.main-head p{margin:0;color:var(--muted)}.actions{display:flex;gap:7px;flex-wrap:wrap}
+.field{display:grid;gap:6px;margin-bottom:13px}.field label{font-size:12px;font-weight:700;color:#555c68}.field input,.field textarea,.field select{width:100%;border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px 11px;color:var(--ink);outline:none}.field input:focus,.field textarea:focus{border-color:#969daa}.field textarea{min-height:76px;resize:vertical}
+.section-title{display:flex;justify-content:space-between;align-items:center;margin:20px 0 10px}.section-title h3{font-size:13px;margin:0}.muted{color:var(--muted);font-size:12px}
+.colors{display:grid;gap:8px}.color-row{display:grid;grid-template-columns:42px minmax(100px,1fr) 112px 34px;gap:9px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:8px}.swatch{height:34px;width:42px;border-radius:8px;border:1px solid #00000012;background:#ddd}.color-row input{min-width:0;width:100%;border:1px solid var(--line);border-radius:8px;padding:8px}.color-row input[type=color]{padding:2px;height:34px}.color-row .hex{font-family:ui-monospace,monospace;text-transform:uppercase;font-size:12px}
+.note{background:#f8f9fb;border:1px solid var(--line);border-radius:12px;padding:12px;color:var(--muted);font-size:12px;margin-top:14px}
+.hidden{display:none!important}.footer{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap}
+@media(max-width:760px){header{padding:22px 16px 14px;align-items:flex-start;flex-direction:column}.wrap{padding:0 16px 32px}.layout{grid-template-columns:1fr}.stats{gap:8px}.stat{padding:12px}.stat strong{font-size:19px}.color-row{grid-template-columns:38px minmax(70px,1fr) 95px 30px}.swatch{width:38px}.main-head{flex-direction:column}}
+</style>
+</head>
+<body>
+<header><div><h1>Color Iterations</h1><p>A clean workspace for testing, recording, and comparing color directions.</p></div><div class="toolbar"><button class="secondary" id="exportBtn">Export JSON</button><button class="secondary" id="importBtn">Import JSON</button><button id="newBtn">＋ New iteration</button><input id="fileInput" type="file" accept="application/json" class="hidden"></div></header>
+<div class="wrap">
+<div class="stats">
+ <div class="stat"><small>Total iterations</small><strong id="totalStat">0</strong></div>
+ <div class="stat"><small>Colors recorded</small><strong id="colorStat">0</strong></div>
+ <div class="stat"><small>Current iteration</small><strong id="currentStat">—</strong></div>
+</div>
+<div class="layout">
+ <aside class="panel"><div class="side-head"><h2>Iteration history</h2><button class="ghost" id="sortBtn">Newest ↓</button></div><div id="iterationList" class="iteration-list"></div><div class="note">Each iteration is its own snapshot. Add a new iteration when you want to test a different direction; earlier versions stay intact.</div></aside>
+ <main class="panel" id="editor">
+  <div class="empty">Create your first iteration to get started.</div>
+ </main>
+</div>
+</div>
+<script>
+const KEY='color-iterations-v1';
+let data=load(), selected=null, newest=true;
+const $=id=>document.getElementById(id);
+function load(){try{return JSON.parse(localStorage.getItem(KEY))||[]}catch{return []}}
+function save(){localStorage.setItem(KEY,JSON.stringify(data));render()}
+function uid(){return 'it-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,6)}
+function esc(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function dateLabel(v){return new Date(v).toLocaleString(undefined,{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'})}
+function current(){return data.find(x=>x.id===selected)}
+function render(){
+ $('totalStat').textContent=data.length;
+ $('colorStat').textContent=data.reduce((n,x)=>n+x.colors.length,0);
+ $('currentStat').textContent=current()?current().name:'—';
+ const list=$('iterationList');list.innerHTML='';
+ [...data].sort((a,b)=>(newest?b.created-a.created:a.created-b.created)).forEach(it=>{
+  const b=document.createElement('button');b.className='iter-link'+(it.id===selected?' active':'');
+  b.innerHTML=`<strong>${esc(it.name)}</strong><span>${dateLabel(it.created)} · ${it.colors.length} color${it.colors.length===1?'':'s'}</span>`;
+  b.onclick=()=>{selected=it.id;render()};list.appendChild(b);
+ });
+ if(!data.length){list.innerHTML='<div class="empty">No iterations yet.</div>'}
+ const it=current(), ed=$('editor');
+ if(!it){ed.innerHTML='<div class="empty">Create your first iteration to get started.</div>';return}
+ ed.innerHTML=`<div class="main-head"><div><h2>Iteration details</h2><p>Changes save automatically in this browser.</p></div><div class="actions"><button class="secondary" id="duplicateBtn">Duplicate</button><button class="danger" id="deleteBtn">Delete</button></div></div>
+ <div class="field"><label for="name">ITERATION NAME</label><input id="name" value="${esc(it.name)}" placeholder="e.g. Direction 01 — neutral"></div>
+ <div class="field"><label for="goal">WHAT ARE YOU TESTING?</label><input id="goal" value="${esc(it.goal||'')}" placeholder="Describe the purpose of this version"></div>
+ <div class="field"><label for="notes">NOTES / OBSERVATIONS</label><textarea id="notes" placeholder="What works, what doesn't, and what changed...">${esc(it.notes||'')}</textarea></div>
+ <div class="section-title"><h3>Colors in this iteration</h3><button class="secondary" id="addColorBtn">＋ Add color</button></div>
+ <div class="colors" id="colors"></div>
+ <div class="note">Enter your own colors. Use the color picker or type a HEX value. This tracker records your choices and does not generate or recommend colors.</div>
+ <div class="footer"><button class="secondary" id="newAfterBtn">＋ Start next iteration</button></div>`;
+ $('name').oninput=e=>{it.name=e.target.value||'Untitled iteration';persistOnly()};
+ $('goal').oninput=e=>{it.goal=e.target.value;persistOnly()};
+ $('notes').oninput=e=>{it.notes=e.target.value;persistOnly()};
+ $('addColorBtn').onclick=()=>{it.colors.push({id:uid(),name:'New color',hex:'#808080'});save()};
+ $('duplicateBtn').onclick=()=>{const copy=JSON.parse(JSON.stringify(it));copy.id=uid();copy.name=it.name+' — copy';copy.created=Date.now();copy.colors=copy.colors.map(c=>({...c,id:uid()}));data.push(copy);selected=copy.id;save()};
+ $('deleteBtn').onclick=()=>{if(confirm('Delete this iteration? This cannot be undone.')){data=data.filter(x=>x.id!==it.id);selected=data[0]?.id||null;save()}};
+ $('newAfterBtn').onclick=createIteration;
+ renderColors(it);
+}
+function persistOnly(){localStorage.setItem(KEY,JSON.stringify(data));$('currentStat').textContent=current()?.name||'—';const active=document.querySelector('.iter-link.active strong');if(active)active.textContent=current()?.name||'Untitled iteration'}
+function renderColors(it){
+ const host=$('colors');host.innerHTML='';
+ if(!it.colors.length){host.innerHTML='<div class="empty">No colors yet. Add a color to this iteration.</div>';return}
+ it.colors.forEach(c=>{
+  const row=document.createElement('div');row.className='color-row';
+  row.innerHTML=`<div class="swatch"></div><input aria-label="Color name" value="${esc(c.name)}" placeholder="Color name"><input class="hex" aria-label="HEX value" value="${esc(c.hex)}" maxlength="7"><button class="ghost" title="Remove color">×</button>`;
+  const sw=row.querySelector('.swatch'), picker=document.createElement('input');picker.type='color';picker.value=validHex(c.hex)?c.hex:'#808080';picker.title='Choose color';picker.style.cssText='position:absolute;opacity:0;width:1px;height:1px;pointer-events:none';row.appendChild(picker);
+  const swWrap=row.querySelector('.swatch');swWrap.style.background=validHex(c.hex)?c.hex:'#ddd';swWrap.style.cursor='pointer';swWrap.title='Click to choose color';swWrap.onclick=()=>picker.click();
+  const name=row.querySelectorAll('input')[0],hex=row.querySelector('.hex');
+  name.oninput=()=>{c.name=name.value;persistOnly()};
+  hex.onchange=()=>{let v=hex.value.trim();if(!v.startsWith('#'))v='#'+v;if(validHex(v)){c.hex=v.toUpperCase();hex.value=c.hex;picker.value=c.hex;sw.style.background=c.hex}else{hex.value=c.hex}};
+  picker.oninput=()=>{c.hex=picker.value.toUpperCase();hex.value=c.hex;sw.style.background=c.hex;persistOnly()};
+  row.querySelector('button').onclick=()=>{it.colors=it.colors.filter(x=>x.id!==c.id);save()};
+  host.appendChild(row);
+ });
+}
+function validHex(v){return /^#[0-9a-fA-F]{6}$/.test(v)}
+function createIteration(){const it={id:uid(),name:`Iteration ${data.length+1}`,goal:'',notes:'',created:Date.now(),colors:[]};data.push(it);selected=it.id;save();$('name')?.focus()}
+$('newBtn').onclick=createIteration;$('sortBtn').onclick=()=>{newest=!newest;$('sortBtn').textContent=newest?'Newest ↓':'Oldest ↑';render()};
+$('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({app:'Color Iterations',version:1,iterations:data},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='color-iterations.json';a.click();URL.revokeObjectURL(a.href)};
+$('importBtn').onclick=()=>$('fileInput').click();
+$('fileInput').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const parsed=JSON.parse(await f.text());const incoming=Array.isArray(parsed)?parsed:parsed.iterations;if(!Array.isArray(incoming))throw Error();if(confirm('Import and replace your current iteration history?')){data=incoming;selected=data[0]?.id||null;save()}}catch{alert('That file does not look like a valid Color Iterations JSON export.')}e.target.value=''};
+if(data.length)selected=data[0].id;render();
+</script>
+</body></html>
